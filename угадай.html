@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Угадай число</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #e6e6fa; /* Светлый фоновый цвет по умолчанию */
+            color: #333; /* Цвет текста по умолчанию */
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .dark-mode {
+            background-color: #2e2e2e; /* Темный фоновый цвет */
+            color: #f0f0f0; /* Светлый цвет текста */
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .dark-mode h1 {
+            color: #f0f0f0; /* Цвет заголовка в темной теме */
+        }
+
+        #game-container, #admin-container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.8); /* Светлый фон для блоков */
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.3s;
+        }
+
+        .dark-mode #game-container, .dark-mode #admin-container {
+            background-color: rgba(50, 50, 50, 0.8); /* Темный фон для блоков */
+        }
+
+        input[type="number"], input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            width: 100px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: #ff6f61;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        button:hover {
+            background-color: #e55d50;
+            transform: scale(1.05);
+        }
+
+        button:disabled {
+            background-color: #ddd;
+            cursor: not-allowed;
+        }
+
+        #hint-message, #admin-message {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .dark-mode #hint-message, .dark-mode #admin-message {
+            color: #f0f0f0;
+        }
+
+        #score-board, #admin-score-board {
+            margin-top: 20px;
+        }
+
+        #instructions, #admin-login {
+            margin-top: 20px;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark-mode #instructions, .dark-mode #admin-login {
+            background-color: #444;
+            color: #f0f0f0;
+        }
+
+        #admin-container {
+            display: none;
+        }
+
+        #theme-toggle {
+            margin-top: 20px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #6a0dad; /* Фиолетовый цвет кнопки */
+            color: #fff;
+            cursor: pointer;
+        }
+
+        #theme-toggle:hover {
+            background-color: #5a0b9d;
+        }
+
+        #admin-button {
+            display: none; /* Скрываем кнопку "Админка" */
+        }
+    </style>
+</head>
+<body>
+    <h1>Игра "Угадай число"</h1>
+
+    <div id="game-container">
+        <p>Введите число от 1 до <span id="max-number">100</span>:</p>
+        <input type="number" id="guess-input" min="1" max="100">
+        <button id="submit-button">Проверить</button>
+        <p id="message"></p>
+        <p id="hint-message"></p>
+        <p id="attempts-left">Попытки: 3</p>
+        <p id="score">Очки: 0</p>
+        <div id="score-board">
+            <h2>Таблица лидеров</h2>
+            <ul id="leaderboard"></ul>
+        </div>
+        <button id="restart-button" style="display: none;">Начать заново</button>
+        <button id="show-help">Показать инструкции</button>
+        <div id="instructions" style="display: none;">
+            <h2>Инструкции</h2>
+            <p>В этой игре вам нужно угадать загаданное число в диапазоне от 1 до <span id="instructions-max-number">100</span>. У вас есть 3 попытки, чтобы угадать число. После каждой попытки вы получите подсказку о том, насколько близко вы к правильному ответу. Удачи!</p>
+        </div>
+        <button id="theme-toggle">Переключить тему</button>
+    </div>
+
+    <div id="admin-container">
+        <div id="admin-login">
+            <h2>Вход в админку</h2>
+            <input type="text" id="admin-password" placeholder="Пароль">
+            <button id="login-button">Войти</button>
+            <p id="admin-message"></p>
+        </div>
+
+        <div id="admin-panel">
+            <h2>Админка</h2>
+            <p>Количество сыгранных игр: <span id="games-played">0</span></p>
+            <p>Среднее количество попыток: <span id="avg-attempts">0</span></p>
+            <p>Рекорды:</p>
+            <div id="admin-score-board">
+                <h2>Таблица лидеров</h2>
+                <ul id="admin-leaderboard"></ul>
+            </div>
+            <button id="back-to-game">Вернуться к игре</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let randomNumber;
+            let attempts = 0;
+            const maxAttempts = 3;
+            let score = 0;
+            const scores = [];
+            const maxNumber = 100;
+
+            const guessInput = document.getElementById('guess-input');
+            const submitButton = document.getElementById('submit-button');
+            const message = document.getElementById('message');
+            const hintMessage = document.getElementById('hint-message');
+            const attemptsLeft = document.getElementById('attempts-left');
+            const scoreElement = document.getElementById('score');
+            const leaderboard = document.getElementById('leaderboard');
+            const restartButton = document.getElementById('restart-button');
+            const showHelpButton = document.getElementById('show-help');
+            const instructions = document.getElementById('instructions');
+            const instructionsMaxNumber = document.getElementById('instructions-max-number');
+
+            // Admin panel elements
+            const adminButton = document.getElementById('admin-button');
+            const adminContainer = document.getElementById('admin-container');
+            const adminLogin = document.getElementById('admin-login');
+            const adminPassword = document.getElementById('admin-password');
+            const loginButton = document.getElementById('login-button');
+            const adminMessage = document.getElementById('admin-message');
+            const adminPanel = document.getElementById('admin-panel');
+            const backToGameButton = document.getElementById('back-to-game');
+            const gamesPlayed = document.getElementById('games-played');
+            const avgAttempts = document.getElementById('avg-attempts');
+            const adminLeaderboard = document.getElementById('admin-leaderboard');
+
+            const startGame = () => {
+                randomNumber = Math.floor(Math.random() * maxNumber) + 1;
+                attempts = 0;
+                message.textContent = '';
+                hintMessage.textContent = '';
+                guessInput.disabled = false;
+                submitButton.disabled = false;
+                restartButton.style.display = 'none';
+                attemptsLeft.textContent = `Попытки: ${maxAttempts}`;
+                scoreElement.textContent = `Очки: ${score}`;
+            };
+
+            const giveHint = (guess) => {
+                const difference = Math.abs(randomNumber - guess);
+                if (difference <= 10) {
+                    hintMessage.textContent = 'Очень горячо!';
+                } else if (difference <= 20) {
+                    hintMessage.textContent = 'Тепло!';
+                } else {
+                    hintMessage.textContent = 'Холодно!';
+                }
+            };
+
+            const giveRangeHint = (guess) => {
+                if (guess < randomNumber) {
+                    hintMessage.textContent += ' Число больше.';
+                } else {
+                    hintMessage.textContent += ' Число меньше.';
+                }
+            };
+
+            const updateLeaderboard = () => {
+                leaderboard.innerHTML = '';
+                scores.sort((a, b) => a - b);
+                scores.forEach(score => {
+                    const li = document.createElement('li');
+                    li.textContent = `Очки: ${score}`;
+                    leaderboard.appendChild(li);
+                });
+            };
+
+            const updateAdminLeaderboard = () => {
+                adminLeaderboard.innerHTML = '';
+                scores.sort((a, b) => a - b);
+                scores.forEach(score => {
+                    const li = document.createElement('li');
+                    li.textContent = `Очки: ${score}`;
+                    adminLeaderboard.appendChild(li);
+                });
+            };
+
+            submitButton.addEventListener('click', () => {
+                const guess = parseInt(guessInput.value, 10);
+                if (isNaN(guess) || guess < 1 || guess > maxNumber) {
+                    message.textContent = 'Введите число в диапазоне от 1 до 100.';
+                    return;
+                }
+
+                attempts++;
+                if (guess === randomNumber) {
+                    message.textContent = 'Поздравляем! Вы угадали число!';
+                    guessInput.disabled = true;
+                    submitButton.disabled = true;
+                    score++;
+                    scoreElement.textContent = `Очки: ${score}`;
+                    scores.push(score);
+                    updateLeaderboard();
+                    restartButton.style.display = 'block';
+                } else if (attempts >= maxAttempts) {
+                    message.textContent = `Игра окончена! Правильный ответ был ${randomNumber}.`;
+                    guessInput.disabled = true;
+                    submitButton.disabled = true;
+                    restartButton.style.display = 'block';
+                } else {
+                    giveHint(guess);
+                    giveRangeHint(guess);
+                    attemptsLeft.textContent = `Попытки: ${maxAttempts - attempts}`;
+                }
+            });
+
+            restartButton.addEventListener('click', startGame);
+
+            showHelpButton.addEventListener('click', () => {
+                instructions.style.display = instructions.style.display === 'none' ? 'block' : 'none';
+                instructionsMaxNumber.textContent = maxNumber;
+            });
+
+            loginButton.addEventListener('click', () => {
+                const password = adminPassword.value;
+                if (password === 'admin123') { // Замените на реальный пароль
+                    adminMessage.textContent = '';
+                    adminLogin.style.display = 'none';
+                    adminPanel.style.display = 'block';
+                    gamesPlayed.textContent = scores.length;
+                    avgAttempts.textContent = scores.length ? (attempts / scores.length).toFixed(2) : '0';
+                    updateAdminLeaderboard();
+                    document.getElementById('admin-button').style.display = 'none'; // Удаляем кнопку "Админка"
+                } else {
+                    adminMessage.textContent = 'Неверный пароль!';
+                }
+            });
+
+            backToGameButton.addEventListener('click', () => {
+                adminContainer.style.display = 'none';
+                startGame();
+            });
+
+            // Темная тема
+            const themeToggleButton = document.getElementById('theme-toggle');
+            themeToggleButton.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+            });
+
+            // Проверка админского пароля в поле ввода чисел
+            guessInput.addEventListener('change', () => {
+                const password = guessInput.value;
+                if (password === '999') { // Замените на реальный пароль
+                    adminMessage.textContent = '';
+                    adminLogin.style.display = 'none';
+                    adminPanel.style.display = 'block';
+                    document.getElementById('admin-button').style.display = 'none'; // Удаляем кнопку "Админка"
+                }
+            });
+
+            startGame();
+        });
+    </script>
+</body>
+</html>
+
